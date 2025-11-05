@@ -36,6 +36,7 @@ public class LinkedList implements Iterable<String> {
                     prev = head;
                     flag = false;
                     while (true) {
+                        swap = false;
                         prev.lock.lock();
                         current1 = prev.next;
                         if (current1 == null) {
@@ -56,11 +57,12 @@ public class LinkedList implements Iterable<String> {
                             current1.next = current2.next;
                             prev.next = current2;
                             current2.next = current1;
+                            counter.incrementAndGet();
                         }
+
                         prev.lock.unlock();
                         current1.lock.unlock();
                         current2.lock.unlock();
-                        counter.incrementAndGet();
                         if (swap) {
                             sleep(Duration.ofSeconds(1));
                             prev = current2;
