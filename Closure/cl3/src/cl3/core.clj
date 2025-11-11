@@ -1,70 +1,134 @@
 (ns cl3.core
-  "Lazy parallel filter: each future handles a block (chunk) of elements.
-
-  Public API:
-    (pfilter pred coll & {:keys [chunk-size prefetch] :or {chunk-size 1000 prefetch 4}})
-
-  Notes:
-   - The returned sequence is lazy, but pfilter will start up to `prefetch`
-     futures (each handling `chunk-size` elements) ahead of consumption.
-   - Tune chunk-size and prefetch for your workload and CPU count.
-   - Side-effects in the predicate will be observed for elements processed
-     by prefetched chunks."
-  (:require [clojure.test :refer :all])
-  (:gen-class))
-
-;; -------------------------
-;; Helpers
-;; -------------------------
-
-(defn chunked-lazy
-  "Return a lazy sequence of vectors each of size up-to n from sequence s.
-  Each chunk is realized (doall) so that it can be processed safely in a future."
-  [n s]
-  (lazy-seq
-    (when-let [s (seq s)]
-      (let [chunk (doall (take n s))]
-        (cons chunk (chunked-lazy n (drop n s)))))))
-
-;; -------------------------
-;; pfilter implementation
-;; -------------------------
+  (:require [clojure.test :refer [run-tests]]))
 
 (defn pfilter
-  "Parallel lazy filter.
+  "Parallel filter using futures. Processes sequence in blocks.
+   - pred: predicate function
+   - coll: input sequence (can be infinite)
+   - block-size: number of elements to process per future (default 1000)"
+  ([pred coll] (pfilter pred coll 1000))
+  ([pred coll block-size]
+   (letfn [(process-block [block]
+             ;; Process a block of elements in a future
+             (future
+               (doall (filter pred block))))
 
-  pred     - predicate to test each element
-  s        - input (possibly infinite) sequence
-  options:
-    :chunk-size (default 1000) - how many elements each future should process
-    :prefetch   (default 4)    - how many futures to keep started ahead
+           (lazy-pfilter [s]
+             (lazy-seq
+               (when (seq s)
+                 (let [block (take block-size s)
+                       rest-seq (drop block-size s)
+                       result-future (process-block block)]
+                   ;; Concatenate the result with recursively processed rest
+                   (concat @result-future (lazy-pfilter rest-seq))))))]
 
-  Returns a lazy sequence of elements from s that satisfy pred.
-  Each future evaluates (doall (filter pred chunk)) for a chunk."
-  [pred s & {:keys [chunk-size prefetch]
-             :or   {chunk-size 1000 prefetch 4}}]
-  (let [chunks (chunked-lazy chunk-size s)]
-    (letfn [(start-n-futures
-              [n chs]
-              ;; start up to n futures, returning [vector-of-futures remaining-chunks-seq]
-              (loop [i n chs chs acc []]
-                (if (and (pos? i) (seq chs))
-                  (recur (dec i) (rest chs)
-                         (conj acc (future (doall (filter pred (first chs))))))
-                  [acc chs])))]
-      (let [[initial-futs rem-chunks] (start-n-futures prefetch chunks)]
-        (letfn [(emit
-                  [futs rem-chs]
-                  (lazy-seq
-                    (when-let [futsq (seq futs)]
-                      (let [f (first futsq)
-                            ;; keep the prefetch buffer full by starting one more future (if possible)
-                            new-fut (when (seq rem-chs)
-                                      (future (doall (filter pred (first rem-chs)))))
-                            new-futs (cond-> (rest futsq) new-fut (conj new-fut))
-                            new-rem  (if (seq rem-chs) (rest rem-chs) nil)
-                            res      @f]                      ;; block until this chunk's future is done
-                        ;; concatenate the filtered chunk's results with the rest (still lazy)
-                        (concat res (emit new-futs new-rem))))))]
-          (emit initial-futs rem-chunks))))))
+     (lazy-pfilter coll))))
 
+(defn pfilter-parallel-blocks
+  "Enhanced parallel filter that processes multiple blocks concurrently.
+   - pred: predicate function
+   - coll: input sequence
+   - block-size: elements per block
+   - num-blocks: number of blocks to process in parallel"
+  ([pred coll] (pfilter-parallel-blocks pred coll 1000 4))
+  ([pred coll block-size num-blocks]
+   (letfn [(process-blocks [blocks]
+             ;; Launch futures for multiple blocks
+             (map (fn [block]
+                    (future (doall (filter pred block))))
+                  blocks))
+
+           (lazy-pfilter [s]
+             (lazy-seq
+               (when (seq s)
+                 (let [;; Take multiple blocks at once
+                       blocks (take num-blocks
+                                    (partition-all block-size s))
+                       rest-seq (drop (* block-size num-blocks) s)
+                       ;; Process blocks in parallel
+                       futures (process-blocks blocks)
+                       ;; Realize futures
+                       results (mapcat deref futures)]
+                   (concat results (lazy-pfilter rest-seq))))))]
+
+     (lazy-pfilter coll))))
+
+;; Heavy computation predicate for testing
+(defn expensive-prime?
+  "Check if number is prime (intentionally slow for benchmarking)"
+  [n]
+  (cond
+    (<= n 1) false
+    (<= n 3) true
+    (or (zero? (mod n 2)) (zero? (mod n 3))) false
+    :else (not-any? #(zero? (mod n %))
+                    (range 5 (inc (Math/sqrt n)) 6))))
+
+;; Performance Benchmarking
+(defn benchmark
+  "Simple benchmark function"
+  [name f]
+  (let [start (System/nanoTime)
+        result (doall f)  ; Force evaluation
+        end (System/nanoTime)
+        time-ms (/ (- end start) 1000000.0)]
+    (println (format "%s: %.2f ms" name time-ms))
+    {:name name :time-ms time-ms :result result}))
+
+(defn run-performance-demo
+  "Demonstrate performance improvements"
+  []
+  (println "\n=== Performance Comparison ===\n")
+
+  ;; Test 1: Finding primes in a range
+  (println "Test 1: Finding primes between 1-10000")
+  (let [data (range 1 10001)
+        pred expensive-prime?]
+
+    (benchmark "Standard filter"
+               (filter pred data))
+
+    (benchmark "Parallel filter (block=100)"
+               (pfilter pred data 100))
+
+    (benchmark "Parallel filter (block=500)"
+               (pfilter pred data 500))
+
+    (benchmark "Parallel blocks (block=250, 4 parallel)"
+               (pfilter-parallel-blocks pred data 250 4)))
+
+  ;; Test 2: Large dataset with simple predicate
+  (println "\n\nTest 2: Filtering 1M elements (simple predicate)")
+  (let [data (range 1000000)
+        pred #(zero? (mod % 7))]
+
+    (benchmark "Standard filter"
+               (filter pred data))
+
+    (benchmark "Parallel filter (block=10000)"
+               (pfilter pred data 10000))
+
+    (benchmark "Parallel blocks (block=5000, 8 parallel)"
+               (pfilter-parallel-blocks pred data 5000 8)))
+
+  ;; Test 3: Demonstrate laziness with infinite sequence
+  (println "\n\nTest 3: Laziness - first 1000 primes from infinite sequence")
+  (let [pred expensive-prime?]
+
+    (benchmark "Standard filter (lazy)"
+               (take 1000 (filter pred (range))))
+
+    (benchmark "Parallel filter (lazy, block=500)"
+               (take 1000 (pfilter pred (range) 500))))
+
+  (println "\n=== Done ==="))
+
+;; Main execution
+(defn -main []
+  (println "Running unit tests...")
+  (run-tests 'cl3.core)
+
+  (run-performance-demo))
+
+;; Uncomment to run:
+(-main)
