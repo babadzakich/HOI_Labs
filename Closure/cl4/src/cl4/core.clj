@@ -95,57 +95,58 @@
   ;;   with 'supply-msg'
   ;; - return new agent state with possibly modified ':buffer' in any case!
   [state ware storage-atom amount]
-  (let [bill (:bill state)
-        buffer (:buffer state)
-        need (max 0 (- (get bill ware 0) (get buffer ware 0)))
-        ;; Попробуем взять не больше того, что нужно и не больше того, что пришло в этом событии.
-        ;; Можно расширить до min(need, @storage-atom) — но ниже мы используем swap-vals! для корректности.
-        to-try (min need amount)]
-    (if (pos? need)
-      (let [[old new] (swap-vals! storage-atom
-                                  (fn [curr]
-                                    ;; сколько реально можем взять: не больше curr и не больше to-try
-                                    (let [take (min curr to-try)]
-                                      ;; возвращаем новое значение склада после "снятия"
-                                      (- curr take))))
-            taken (- old new)
-            ;; обновлённый локальный буфер фабрики
-            updated-buffer (if (pos? taken)
-                             (assoc buffer ware (+ (get buffer ware 0) taken))
-                             buffer)]
-        ;; если теперь хватает по всем позициям - запускаем цикл производства
-        (if (every? (fn [[k v]] (>= (get updated-buffer k 0) v)) bill)
-          (let [after-buffer (reduce-kv (fn [acc k v]
-                                          (assoc acc k (- (get acc k 0) v)))
-                                        updated-buffer
-                                        bill)
-                produced (:amount state)
-                duration (:duration state)
-                target (:target-storage state)]
-            ;; Запускаем производство в фоне — future не блокирует пул агентов.
-            (future
-              (Thread/sleep duration)
-              (send (target :worker) supply-msg produced))
-            ;; Возвращаем состояние агента с уменьшенным буфером (материалы уже списаны)
-            (assoc state :buffer after-buffer))
-          ;; ещё не набрали — просто вернём состояние с обновлённым буфером
-          (assoc state :buffer updated-buffer)))
-      ;; если не нужно ничего брать — просто возвращаем состояние
-      state)))
+  (let [bill (state :bill)                ;; Required wares for a cycle
+        buffer (state :buffer)             ;; Current wares already collected
+        ;updated-buffer (update buffer ware #(+ % amount))  ;; Update buffer with the newly received items
+        needed-amount (- (get bill ware 0) (get buffer ware 0))
+        take-amount (min needed-amount amount)
+        duration (state :duration)         ;; Cycle duration
+        target-storage (state :target-storage)] ;; The storage to notify
+    (if (> needed-amount 0)
+      (try
+        (do
+          (swap! storage-atom #(- % take-amount))
+          (let [updated-buffer (update buffer ware #(+ % take-amount))]
+            ;; Check if we can start a new production cycle
+            (if (every? #(>= (updated-buffer %) (bill %)) (keys bill))
+              (let [reduced-buffer (reduce-kv
+                                     (fn [acc k v]
+                                       (assoc acc k (- (acc k) v))) ;; Decrease buffer after using wares
+                                     updated-buffer
+                                     bill)
+                    produced-amount (state :amount)]
+                (.start (new Thread
+                             (fn []
+                               (Thread/sleep duration)
+                               ;; Notify the target storage about the produced goods
+                               (send (target-storage :worker) supply-msg produced-amount)
+                               )
+                             ))
+                (assoc state :buffer reduced-buffer)
+                )
+              (assoc state :buffer updated-buffer) ;; If we cant start a new cycle - return p
+              )
+            )
+          )
+        (catch IllegalStateException e state)) ;; Return unmodified state if failed to take resouces
+      state
+      )
+    )
+  )
 
 ;;;
 (def safe-storage (storage "Safe" 1))
 (def safe-factory (factory 1 3000 safe-storage "Metal" 3))
 (def cuckoo-clock-storage (storage "Cuckoo-clock" 1))
 (def cuckoo-clock-factory (factory 1 2000 cuckoo-clock-storage "Lumber" 5 "Gears" 10))
-(def gears-storage (storage "Gears" 20 cuckoo-clock-factory))
+(def gears-storage (storage "Gears" 1 cuckoo-clock-factory))
 (def gears-factory (factory 4 1000 gears-storage "Ore" 4))
-(def metal-storage (storage "Metal" 5 safe-factory))
+(def metal-storage (storage "Metal" 1 safe-factory))
 (def metal-factory (factory 1 1000 metal-storage "Ore" 10))
-(def lumber-storage (storage "Lumber" 20 cuckoo-clock-factory))
-(def lumber-mill (source 5 4000 lumber-storage))
-(def ore-storage (storage "Ore" 10 metal-factory gears-factory))
-(def ore-mine (source 2 1000 ore-storage))
+(def lumber-storage (storage "Lumber" 1 cuckoo-clock-factory))
+(def lumber-mill (source 5 8000 lumber-storage))
+(def ore-storage (storage "Ore" 1 metal-factory gears-factory))
+(def ore-mine (source 2 2000 ore-storage))
 
 ;;;runs sources and the whole process as the result
 (defn start []
@@ -159,6 +160,6 @@
   (.stop lumber-mill))
 
 ;;;This could be used to aquire errors from workers
-;;;(agent-error (gears-factory :worker))
-;;;(agent-error (metal-storage :worker))
+;(agent-error (gears-factory :worker))
+;(agent-error (metal-storage :worker))
 (start)
