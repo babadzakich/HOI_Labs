@@ -5,15 +5,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.*;
 
-/**
- * Writes structured person data to XML file
- */
 public class XMLWriter {
     
-    /**
-     * Write consolidated person data to XML file
-     */
-    public void writeXML(Map<String, PersonData> personMap, String outputPath) 
+    public void writeXML(Map<String, PersonData> personMap, String outputPath)
             throws XMLStreamException, IOException {
         
         XMLOutputFactory factory = XMLOutputFactory.newInstance();
@@ -21,22 +15,18 @@ public class XMLWriter {
         try (FileOutputStream fos = new FileOutputStream(outputPath)) {
             XMLStreamWriter writer = factory.createXMLStreamWriter(fos, "UTF-8");
             
-            // Start document
             writer.writeStartDocument("UTF-8", "1.0");
             writer.writeCharacters("\n");
             
-            // Root element
             writer.writeStartElement("people");
             writer.writeAttribute("count", String.valueOf(personMap.size()));
             writer.writeCharacters("\n");
             
-            // Write each person
             for (PersonData person : personMap.values()) {
                 writePerson(writer, person);
             }
             
-            // End root element
-            writer.writeEndElement(); // people
+            writer.writeEndElement();
             writer.writeCharacters("\n");
             
             writer.writeEndDocument();
@@ -49,100 +39,90 @@ public class XMLWriter {
         writer.writeCharacters("  ");
         writer.writeStartElement("person");
         
-        // Write ID attribute
-        if (person.getId() != null) {
-            writer.writeAttribute("id", person.getId());
+        if (person.id != null) {
+            writer.writeAttribute("id", person.id);
         }
         
         writer.writeCharacters("\n");
         
-        // Write basic information
-        if (person.getFirstName() != null) {
-            writeElement(writer, "firstName", person.getFirstName(), 4);
+        if (person.firstName != null) {
+            writeElement(writer, "firstName", person.firstName, 4);
         }
         
-        if (person.getLastName() != null) {
-            writeElement(writer, "lastName", person.getLastName(), 4);
+        if (person.lastName != null) {
+            writeElement(writer, "lastName", person.lastName, 4);
         }
         
-        if (person.getGender() != null) {
-            writeElement(writer, "gender", person.getGender().name().toLowerCase(), 4);
+        if (person.gender != null) {
+            writeElement(writer, "gender", person.gender.name().toLowerCase(), 4);
         }
         
-        // Write spouse
-        if (person.getSpouse() != null) {
-            writeElement(writer, "spouse", person.getSpouse(), 4);
+        if (person.spouse != null) {
+            writeElement(writer, "spouse", person.spouse, 4);
         }
         
-        // Write parents
-        if (person.getMother() != null || person.getFather() != null) {
+        if (person.mother != null || person.father != null) {
             writer.writeCharacters("    ");
             writer.writeStartElement("parents");
             writer.writeCharacters("\n");
             
-            if (person.getMother() != null) {
-                writeElement(writer, "mother", person.getMother(), 6);
+            if (person.mother != null) {
+                writeElement(writer, "mother", person.mother, 6);
             }
             
-            if (person.getFather() != null) {
-                writeElement(writer, "father", person.getFather(), 6);
+            if (person.father != null) {
+                writeElement(writer, "father", person.father, 6);
             }
             
             writer.writeCharacters("    ");
-            writer.writeEndElement(); // parents
+            writer.writeEndElement();
             writer.writeCharacters("\n");
         }
         
-        // Write children
-        if (!person.getSons().isEmpty() || !person.getDaughters().isEmpty()) {
+        if (!person.sons.isEmpty() || !person.daughters.isEmpty()) {
             writer.writeCharacters("    ");
             writer.writeStartElement("children");
             
-            int totalChildren = person.getSons().size() + person.getDaughters().size();
+            int totalChildren = person.sons.size() + person.daughters.size();
             writer.writeAttribute("count", String.valueOf(totalChildren));
             writer.writeCharacters("\n");
             
-            // Write sons
-            for (String sonId : person.getSons()) {
+            for (String sonId : person.sons) {
                 writeElement(writer, "son", sonId, 6);
             }
             
-            // Write daughters
-            for (String daughterId : person.getDaughters()) {
+            for (String daughterId : person.daughters) {
                 writeElement(writer, "daughter", daughterId, 6);
             }
             
             writer.writeCharacters("    ");
-            writer.writeEndElement(); // children
+            writer.writeEndElement();
             writer.writeCharacters("\n");
         }
         
-        // Write siblings
-        if (!person.getBrothers().isEmpty() || !person.getSisters().isEmpty()) {
+        if (!person.brothers.isEmpty() || !person.sisters.isEmpty()) {
             writer.writeCharacters("    ");
             writer.writeStartElement("siblings");
             
-            int totalSiblings = person.getBrothers().size() + person.getSisters().size();
+            int totalSiblings = person.brothers.size() + person.sisters.size();
             writer.writeAttribute("count", String.valueOf(totalSiblings));
             writer.writeCharacters("\n");
             
-            // Write brothers
-            for (String brotherId : person.getBrothers()) {
+            for (String brotherId : person.brothers) {
                 writeElement(writer, "brother", brotherId, 6);
             }
             
-            // Write sisters
-            for (String sisterId : person.getSisters()) {
+            for (String sisterId : person.sisters) {
                 writeElement(writer, "sister", sisterId, 6);
             }
             
             writer.writeCharacters("    ");
-            writer.writeEndElement(); // siblings
+            writer.writeEndElement();
             writer.writeCharacters("\n");
         }
         
         writer.writeCharacters("  ");
-        writer.writeEndElement(); // person
+        writer.writeEndElement();
         writer.writeCharacters("\n");
     }
     

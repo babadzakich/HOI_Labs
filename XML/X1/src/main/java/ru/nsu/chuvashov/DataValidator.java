@@ -2,17 +2,14 @@ package ru.nsu.chuvashov;
 
 import java.util.*;
 
-/**
- * Validates consistency of person data based on auxiliary markers
- */
 public class DataValidator {
     
-    private List<ValidationError> errors = new ArrayList<>();
-    private List<ValidationWarning> warnings = new ArrayList<>();
+    private final List<ValidationError> errors = new ArrayList<>();
+    private final List<ValidationWarning> warnings = new ArrayList<>();
     
     public static class ValidationError {
-        private String personId;
-        private String message;
+        private final String personId;
+        private final String message;
         
         public ValidationError(String personId, String message) {
             this.personId = personId;
@@ -39,10 +36,7 @@ public class DataValidator {
             return "WARNING [" + personId + "]: " + message;
         }
     }
-    
-    /**
-     * Validate all persons and return validation report
-     */
+
     public ValidationReport validate(Map<String, PersonData> personMap) {
         errors.clear();
         warnings.clear();
@@ -55,11 +49,10 @@ public class DataValidator {
     }
     
     private void validatePerson(PersonData person, Map<String, PersonData> personMap) {
-        String id = person.getId() != null ? person.getId() : "UNKNOWN";
+        String id = person.id != null ? person.id : "UNKNOWN";
         
-        // Validate children count
-        if (person.getExpectedChildrenCount() != null) {
-            int expected = person.getExpectedChildrenCount();
+        if (person.expectedChildrenCount != null) {
+            int expected = person.expectedChildrenCount;
             int actual = person.getActualChildrenCount();
             
             if (expected != actual) {
@@ -68,9 +61,8 @@ public class DataValidator {
             }
         }
         
-        // Validate siblings count
-        if (person.getExpectedSiblingsCount() != null) {
-            int expected = person.getExpectedSiblingsCount();
+        if (person.expectedSiblingsCount != null) {
+            int expected = person.expectedSiblingsCount;
             int actual = person.getActualSiblingsCount();
             
             if (expected != actual) {
@@ -79,25 +71,21 @@ public class DataValidator {
             }
         }
         
-        // Validate that referenced persons exist
         validateReferences(person, personMap);
         
-        // Check for logical inconsistencies
         validateLogicalConsistency(person);
     }
     
     private void validateReferences(PersonData person, Map<String, PersonData> personMap) {
-        String id = person.getId() != null ? person.getId() : "UNKNOWN";
+        String id = person.id != null ? person.id : "UNKNOWN";
         
-        // Check spouse exists
-        if (person.getSpouse() != null && person.getSpouse().startsWith("P")) {
-            if (!personMap.containsKey(person.getSpouse())) {
+        if (person.spouse != null && person.spouse.startsWith("P")) {
+            if (!personMap.containsKey(person.spouse)) {
                 warnings.add(new ValidationWarning(id, 
-                    "Spouse reference " + person.getSpouse() + " not found"));
+                    "Spouse reference " + person.spouse + " not found"));
             }
         }
         
-        // Check children exist
         for (String childId : person.getAllChildren()) {
             if (childId.startsWith("P") && !personMap.containsKey(childId)) {
                 warnings.add(new ValidationWarning(id,
@@ -105,7 +93,6 @@ public class DataValidator {
             }
         }
         
-        // Check siblings exist
         for (String siblingId : person.getAllSiblings()) {
             if (siblingId.startsWith("P") && !personMap.containsKey(siblingId)) {
                 warnings.add(new ValidationWarning(id,
@@ -113,30 +100,28 @@ public class DataValidator {
             }
         }
         
-        // Check parents exist
-        if (person.getMother() != null && person.getMother().startsWith("P")) {
-            if (!personMap.containsKey(person.getMother())) {
+        if (person.mother != null && person.mother.startsWith("P")) {
+            if (!personMap.containsKey(person.mother)) {
                 warnings.add(new ValidationWarning(id,
-                    "Mother reference " + person.getMother() + " not found"));
+                    "Mother reference " + person.mother + " not found"));
             }
         }
         
-        if (person.getFather() != null && person.getFather().startsWith("P")) {
-            if (!personMap.containsKey(person.getFather())) {
+        if (person.father != null && person.father.startsWith("P")) {
+            if (!personMap.containsKey(person.father)) {
                 warnings.add(new ValidationWarning(id,
-                    "Father reference " + person.getFather() + " not found"));
+                    "Father reference " + person.father + " not found"));
             }
         }
     }
     
     private void validateLogicalConsistency(PersonData person) {
-        String id = person.getId() != null ? person.getId() : "UNKNOWN";
+        String id = person.id != null ? person.id : "UNKNOWN";
         
-        // Check that person has at least some information
-        if (person.getFirstName() == null && 
-            person.getLastName() == null && 
-            person.getGender() == null &&
-            person.getSpouse() == null &&
+        if (person.firstName == null &&
+            person.lastName == null && 
+            person.gender == null &&
+            person.spouse == null &&
             person.getAllChildren().isEmpty() &&
             person.getAllSiblings().isEmpty() &&
             person.getParents().isEmpty()) {
@@ -145,7 +130,6 @@ public class DataValidator {
                 "Person has minimal information (only ID)"));
         }
         
-        // Check for siblings that are also children (logical error)
         Set<String> childrenIds = person.getAllChildren();
         Set<String> siblingIds = person.getAllSiblings();
         
@@ -166,23 +150,7 @@ public class DataValidator {
             this.errors = errors;
             this.warnings = warnings;
         }
-        
-        public List<ValidationError> getErrors() {
-            return errors;
-        }
-        
-        public List<ValidationWarning> getWarnings() {
-            return warnings;
-        }
-        
-        public boolean hasErrors() {
-            return !errors.isEmpty();
-        }
-        
-        public boolean hasWarnings() {
-            return !warnings.isEmpty();
-        }
-        
+
         public void printReport() {
             System.out.println("\n=== VALIDATION REPORT ===");
             System.out.println("Errors: " + errors.size());
@@ -197,7 +165,6 @@ public class DataValidator {
             
             if (!warnings.isEmpty()) {
                 System.out.println("\n--- WARNINGS ---");
-                // Print only first 20 warnings to avoid clutter
                 int count = Math.min(20, warnings.size());
                 for (int i = 0; i < count; i++) {
                     System.out.println(warnings.get(i));

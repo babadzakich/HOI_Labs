@@ -1,33 +1,85 @@
 package ru.nsu.chuvashov;
 
+import jakarta.xml.bind.annotation.*;
 import java.util.*;
 
 /**
  * Complete person data with all available information consolidated from multiple XML entries
  */
+@XmlRootElement(name = "person")
+@XmlAccessorType(XmlAccessType.FIELD)
 public class PersonData {
+    @XmlAttribute
     public String id;
+    
+    @XmlElement
     public String firstName;
+    
+    @XmlElement
     public String lastName;
+    
+    @XmlElement
     public Gender gender;
+    
+    @XmlElement
     public String spouse;
     
-    // Relationships
-    public Set<String> brothers = new HashSet<>();
-    public Set<String> sisters = new HashSet<>();
-    public Set<String> sons = new HashSet<>();
-    public Set<String> daughters = new HashSet<>();
+    @XmlElement
     public String mother;
+    
+    @XmlElement
     public String father;
     
-    // Validation markers
+    @XmlTransient
+    public Set<String> brothers = new HashSet<>();
+    
+    @XmlTransient
+    public Set<String> sisters = new HashSet<>();
+    
+    public Set<String> sons = new HashSet<>();
+    
+    public Set<String> daughters = new HashSet<>();
+    
+    @XmlTransient
     public Integer expectedChildrenCount;
+    
+    @XmlTransient
     public Integer expectedSiblingsCount;
     
     public PersonData() {}
     
     public PersonData(String id) {
         this.id = id;
+    }
+    
+    // Helper methods
+    public int getActualChildrenCount() {
+        return sons.size() + daughters.size();
+    }
+    
+    public int getActualSiblingsCount() {
+        return brothers.size() + sisters.size();
+    }
+    
+    public Set<String> getAllChildren() {
+        Set<String> allChildren = new HashSet<>();
+        allChildren.addAll(sons);
+        allChildren.addAll(daughters);
+        return allChildren;
+    }
+    
+    public Set<String> getAllSiblings() {
+        Set<String> allSiblings = new HashSet<>();
+        allSiblings.addAll(brothers);
+        allSiblings.addAll(sisters);
+        return allSiblings;
+    }
+    
+    public List<String> getParents() {
+        List<String> parents = new ArrayList<>();
+        if (mother != null) parents.add(mother);
+        if (father != null) parents.add(father);
+        return parents;
     }
     
     /**

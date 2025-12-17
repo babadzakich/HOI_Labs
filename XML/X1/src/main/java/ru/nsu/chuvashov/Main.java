@@ -2,54 +2,44 @@ package ru.nsu.chuvashov;
 
 import java.util.*;
 
-/**
- * Main application to parse, validate, and restructure person data from XML
- */
 public class Main {
     public static void main(String[] args) {
         try {
-            // Configuration
-            String inputFile = "src/main/resources/people.xml";
-            String outputFile = "src/main/resources/people_structured.xml";
+            String inputFile = "people.xml";
+            String outputFile = "people_structured.xml";
             
             System.out.println("=== Person Data Processing ===");
             System.out.println("Input file: " + inputFile);
             System.out.println("Output file: " + outputFile);
             System.out.println();
             
-            // Step 1: Parse XML file
             System.out.println("Step 1: Parsing XML file...");
             XMLParser parser = new XMLParser();
             List<PersonData> rawPersons = parser.parseXML(inputFile);
             System.out.println("Parsed " + rawPersons.size() + " person entries");
             System.out.println();
             
-            // Step 2: Merge duplicate/partial entries
             System.out.println("Step 2: Merging person data...");
             PersonDataMerger merger = new PersonDataMerger();
             Map<String, PersonData> consolidatedPersons = merger.mergePersons(rawPersons);
             System.out.println("Consolidated into " + consolidatedPersons.size() + " unique persons");
             System.out.println();
             
-            // Step 3: Validate data consistency
             System.out.println("Step 3: Validating data consistency...");
             DataValidator validator = new DataValidator();
             DataValidator.ValidationReport report = validator.validate(consolidatedPersons);
             report.printReport();
             
-            // Step 4: Display sample data
             System.out.println("Step 4: Sample consolidated data:");
             displaySampleData(consolidatedPersons, 5);
             System.out.println();
             
-            // Step 5: Write structured XML output
             System.out.println("Step 5: Writing structured XML...");
             XMLWriter writer = new XMLWriter();
             writer.writeXML(consolidatedPersons, outputFile);
             System.out.println("Successfully wrote structured data to " + outputFile);
             System.out.println();
             
-            // Summary statistics
             printStatistics(consolidatedPersons);
             
             System.out.println("\n=== Processing Complete ===");
@@ -65,7 +55,6 @@ public class Main {
         for (PersonData person : personMap.values()) {
             if (displayed >= count) break;
             
-            // Only show persons with meaningful data
             if (person.firstName != null || person.lastName != null) {
                 System.out.println("  " + person);
                 displayed++;

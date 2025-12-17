@@ -6,14 +6,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 
-/**
- * StAX-based XML parser for reading person data from XML file
- */
 public class XMLParser {
     
-    /**
-     * Parse XML file and return list of PersonData objects (may contain duplicates/partial data)
-     */
     public List<PersonData> parseXML(String filePath) throws XMLStreamException, IOException {
         List<PersonData> persons = new ArrayList<>();
         
@@ -34,8 +28,7 @@ public class XMLParser {
                         
                         if ("person".equals(elementName)) {
                             currentPerson = new PersonData();
-                            
-                            // Check for attributes on person element
+
                             for (int i = 0; i < reader.getAttributeCount(); i++) {
                                 String attrName = reader.getAttributeLocalName(i);
                                 String attrValue = reader.getAttributeValue(i);
@@ -50,7 +43,6 @@ public class XMLParser {
                             currentElement = elementName;
                             textContent.setLength(0);
                             
-                            // Process element attributes
                             processElementAttributes(reader, currentPerson, elementName);
                         }
                         break;
@@ -147,6 +139,16 @@ public class XMLParser {
                         person.sisters.add(attrValue);
                     }
                     break;
+                case "mother":
+                    if ("id".equals(attrName)) {
+                        person.mother = attrValue;
+                    }
+                    break;
+                case "father":
+                    if ("id".equals(attrName)) {
+                        person.father = attrValue;
+                    }
+                    break;
                 case "children-number":
                     if ("value".equals(attrName)) {
                         try {
@@ -160,9 +162,7 @@ public class XMLParser {
                     if ("value".equals(attrName)) {
                         try {
                             person.expectedSiblingsCount = Integer.parseInt(attrValue);
-                        } catch (NumberFormatException e) {
-                            // Ignore invalid numbers
-                        }
+                        } catch (NumberFormatException e) {}
                     }
                     break;
             }
@@ -227,16 +227,10 @@ public class XMLParser {
         
         value = value.trim();
         
-        // If it's a person ID (starts with P), we can't determine if it's mother or father
-        // Store as generic parent - will be resolved later if possible
         if (value.startsWith("P")) {
-            // This is an ID reference - we'll handle this in post-processing
-            // For now, just skip as we don't know the gender
             return;
         }
         
-        // If it's a name, try to infer from context (this is imperfect)
-        // We'll just store it as a parent and hope other entries clarify
     }
     
     private void parseSiblings(String value, PersonData person) {
@@ -244,14 +238,9 @@ public class XMLParser {
             return;
         }
         
-        // Siblings can be space-separated IDs
         String[] siblingIds = value.trim().split("\\s+");
         for (String siblingId : siblingIds) {
-            if (!siblingId.isEmpty() && siblingId.startsWith("P")) {
-                // We don't know gender yet, will be resolved in post-processing
-                // For now, we need to store them somewhere
-                // We'll add a method to handle unresolved siblings
-                // Temporarily add as brothers (will be corrected later)
+            if (siblingId.startsWith("P")) {
                 person.brothers.add(siblingId);
             }
         }
