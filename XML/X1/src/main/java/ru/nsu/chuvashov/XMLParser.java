@@ -1,10 +1,14 @@
 package ru.nsu.chuvashov;
 
-import javax.xml.stream.*;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamConstants;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
 
 public class XMLParser {
     
@@ -79,6 +83,11 @@ public class XMLParser {
         for (int i = 0; i < reader.getAttributeCount(); i++) {
             String attrName = reader.getAttributeLocalName(i);
             String attrValue = reader.getAttributeValue(i);
+            
+            // Нормализуем значение
+            if (attrValue != null) {
+                attrValue = attrValue.trim().replaceAll("\\s+", " ");
+            }
             
             switch (elementName) {
                 case "id":
@@ -174,6 +183,9 @@ public class XMLParser {
             return;
         }
         
+        // Нормализуем текст
+        text = text.trim().replaceAll("\\s+", " ");
+        
         switch (elementName) {
             case "firstname":
             case "first":
@@ -181,6 +193,7 @@ public class XMLParser {
                 break;
             case "surname":
             case "family":
+            case "family-name":
                 person.lastName = text;
                 break;
             case "gender":
@@ -200,6 +213,9 @@ public class XMLParser {
                 break;
             case "sister":
                 person.sisters.add(text);
+                break;
+            case "child":
+                person.childrenNames.add(text);
                 break;
         }
     }
@@ -251,12 +267,14 @@ public class XMLParser {
             return;
         }
         
-        String[] parts = fullName.trim().split("\\s+");
+        fullName = fullName.trim().replaceAll("\\s+", " ");
+        String[] parts = fullName.split(" ");
+        
         if (parts.length >= 2) {
-            person.firstName =(parts[0]);
-            person.lastName =(parts[parts.length - 1]);
+            person.firstName = parts[0];
+            person.lastName = parts[parts.length - 1];
         } else if (parts.length == 1) {
-            person.firstName =(parts[0]);
+            person.firstName = parts[0];
         }
     }
 }

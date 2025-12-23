@@ -1,7 +1,16 @@
 package ru.nsu.chuvashov;
 
-import jakarta.xml.bind.annotation.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import jakarta.xml.bind.annotation.XmlAccessType;
+import jakarta.xml.bind.annotation.XmlAccessorType;
+import jakarta.xml.bind.annotation.XmlAttribute;
+import jakarta.xml.bind.annotation.XmlElement;
+import jakarta.xml.bind.annotation.XmlRootElement;
+import jakarta.xml.bind.annotation.XmlTransient;
 
 /**
  * Complete person data with all available information consolidated from multiple XML entries
@@ -31,6 +40,12 @@ public class PersonData {
     public String father;
     
     @XmlTransient
+    public List<String> siblings = new ArrayList<>();
+    
+    @XmlTransient
+    public List<String> children = new ArrayList<>();
+    
+    @XmlTransient
     public Set<String> brothers = new HashSet<>();
     
     @XmlTransient
@@ -45,6 +60,13 @@ public class PersonData {
     
     @XmlTransient
     public Integer expectedSiblingsCount;
+    
+    // Временные списки имен для разрешения связей
+    @XmlTransient
+    public List<String> childrenNames = new ArrayList<>();
+    
+    @XmlTransient
+    public List<String> parentNames = new ArrayList<>();
     
     public PersonData() {}
     
@@ -62,14 +84,14 @@ public class PersonData {
     }
     
     public Set<String> getAllChildren() {
-        Set<String> allChildren = new HashSet<>();
+        Set<String> allChildren = new HashSet<>(children);
         allChildren.addAll(sons);
         allChildren.addAll(daughters);
         return allChildren;
     }
     
     public Set<String> getAllSiblings() {
-        Set<String> allSiblings = new HashSet<>();
+        Set<String> allSiblings = new HashSet<>(siblings);
         allSiblings.addAll(brothers);
         allSiblings.addAll(sisters);
         return allSiblings;
@@ -80,28 +102,6 @@ public class PersonData {
         if (mother != null) parents.add(mother);
         if (father != null) parents.add(father);
         return parents;
-    }
-    
-    /**
-     * Merge data from another PersonData object into this one
-     */
-    public void merge(PersonData other) {
-        if (other == null) return;
-        
-        if (id == null) id = other.id;
-        if (firstName == null) firstName = other.firstName;
-        if (lastName == null) lastName = other.lastName;
-        if (gender == null) gender = other.gender;
-        if (spouse == null) spouse = other.spouse;
-        if (mother == null) mother = other.mother;
-        if (father == null) father = other.father;
-        if (expectedChildrenCount == null) expectedChildrenCount = other.expectedChildrenCount;
-        if (expectedSiblingsCount == null) expectedSiblingsCount = other.expectedSiblingsCount;
-        
-        brothers.addAll(other.brothers);
-        sisters.addAll(other.sisters);
-        sons.addAll(other.sons);
-        daughters.addAll(other.daughters);
     }
     
     @Override
