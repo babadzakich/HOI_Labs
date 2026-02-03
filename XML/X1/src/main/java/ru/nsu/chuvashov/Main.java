@@ -1,5 +1,7 @@
 package ru.nsu.chuvashov;
 
+import ru.nsu.chuvashov.jaxb.XMLWriterJAXB;
+
 import java.util.*;
 
 public class Main {
@@ -34,12 +36,26 @@ public class Main {
             displaySampleData(consolidatedPersons, 5);
             System.out.println();
             
-            System.out.println("Step 5: Writing structured XML...");
-            XMLWriter writer = new XMLWriter();
-            writer.writeXML(consolidatedPersons, outputFile);
-            System.out.println("Successfully wrote structured data to " + outputFile);
+//            System.out.println("Step 5: Writing structured XML...");
+//            XMLWriter writer = new XMLWriter();
+//            writer.writeXML(consolidatedPersons, outputFile);
+//            System.out.println("Successfully wrote structured data to " + outputFile);
+//            System.out.println();
+
+            System.out.println("Step 6: Writing with JAXB and schema validation...");
+            String jaxbOutputFile = "people_jaxb.xml";
+            String schemaFile = "people_structured.xsd";
+
+            XMLWriterJAXB jaxbWriter = new XMLWriterJAXB();
+            jaxbWriter.loadSchema(schemaFile);
+            jaxbWriter.writeXML(consolidatedPersons, jaxbOutputFile);
+            System.out.println("Successfully wrote JAXB data to " + jaxbOutputFile);
+
+            System.out.println("Step 7: Validating XML against schema...");
+            jaxbWriter.validateXML(jaxbOutputFile);
+            System.out.println("✓ XML validation successful!");
             System.out.println();
-            
+
             printStatistics(consolidatedPersons);
             
             System.out.println("\n=== Processing Complete ===");
