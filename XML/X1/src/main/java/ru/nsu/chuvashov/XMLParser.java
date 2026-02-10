@@ -111,7 +111,17 @@ public class XMLParser {
                     }
                     break;
                 case "wife":
+                    if ("value".equals(attrName)) {
+                        person.spouse = attrValue;
+                        person.isSpouseWife = true;  // spouse - это wife (жена)
+                    }
+                    break;
                 case "husband":
+                    if ("value".equals(attrName)) {
+                        person.spouse = attrValue;
+                        person.isSpouseWife = false;  // spouse - это husband (муж)
+                    }
+                    break;
                 case "spouce":
                 case "spouse":
                     if ("value".equals(attrName)) {
@@ -257,7 +267,8 @@ public class XMLParser {
         String[] siblingIds = value.trim().split("\\s+");
         for (String siblingId : siblingIds) {
             if (siblingId.startsWith("P")) {
-                person.brothers.add(siblingId);
+                // Добавляем в общий список siblings, т.к. пол неизвестен
+                person.siblings.add(siblingId);
             }
         }
     }

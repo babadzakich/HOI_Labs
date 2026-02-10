@@ -102,7 +102,16 @@ public class PersonDataMerger {
                 }
                 if (temp.spouse != null && temp.spouse.startsWith("P") && peopleOut.containsKey(temp.spouse)) {
                     setHusbandWife.accept(id, temp.spouse);
-                    genderHints.get(temp.spouse).add(Gender.FEMALE);
+                    // Если spouse - это wife (жена), то супруг - женщина, а сам человек - мужчина
+                    if (temp.isSpouseWife != null && temp.isSpouseWife) {
+                        genderHints.get(temp.spouse).add(Gender.FEMALE);
+                        genderHints.get(id).add(Gender.MALE);
+                    }
+                    // Если spouse - это husband (муж), то супруг - мужчина, а сам человек - женщина
+                    else if (temp.isSpouseWife != null && !temp.isSpouseWife) {
+                        genderHints.get(temp.spouse).add(Gender.MALE);
+                        genderHints.get(id).add(Gender.FEMALE);
+                    }
                 }
                 
                 for (String sonId : temp.sons) {
@@ -133,6 +142,13 @@ public class PersonDataMerger {
                     if (sibling.startsWith("P") && peopleOut.containsKey(sibling)) {
                         addSibling.accept(id, sibling);
                         genderHints.get(sibling).add(Gender.FEMALE);
+                    }
+                }
+                // Обработка siblings с неизвестным полом (без gender hints)
+                for (String sibling : temp.siblings) {
+                    if (sibling.startsWith("P") && peopleOut.containsKey(sibling)) {
+                        addSibling.accept(id, sibling);
+                        // НЕ добавляем gender hint, т.к. пол неизвестен
                     }
                 }
             }
@@ -275,6 +291,35 @@ public class PersonDataMerger {
             List<Gender> hints = genderHints.get(id);
             long maleCnt = hints.stream().filter((g) -> g.equals(Gender.MALE)).count();
             peopleOut.get(id).gender = maleCnt >= hints.size() / 2.0 ? Gender.MALE : Gender.FEMALE;
+        }
+        
+        // После определения пола распределяем детей и сиблингов по полу
+        for (String id : peopleOut.keySet()) {
+            PersonData person = peopleOut.get(id);
+            
+            // Распределяем детей по полу
+            for (String childId : person.children) {
+                PersonData child = peopleOut.get(childId);
+                if (child != null && child.gender != null) {
+                    if (child.gender == Gender.MALE) {
+                        person.sons.add(childId);
+                    } else {
+                        person.daughters.add(childId);
+                    }
+                }
+            }
+            
+            // Распределяем сиблингов по полу
+            for (String siblingId : person.siblings) {
+                PersonData sibling = peopleOut.get(siblingId);
+                if (sibling != null && sibling.gender != null) {
+                    if (sibling.gender == Gender.MALE) {
+                        person.brothers.add(siblingId);
+                    } else {
+                        person.sisters.add(siblingId);
+                    }
+                }
+            }
         }
         
         return peopleOut;

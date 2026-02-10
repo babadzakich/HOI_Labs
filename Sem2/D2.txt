@@ -1,0 +1,15 @@
+Table Person {
+  id integer [primary key]
+  first_name varchar
+  last_name varchar
+  gender boolean
+  
+  spouse_id integer [unique, ref: - Person.id]
+  father_id integer [ref: > Person.id]
+  mother_id integer [ref: > Person.id]
+}
+
+Table Siblings {
+  person_id integer [ref: > Person.id]
+  sibling_id integer [ref: > Person.id]
+}

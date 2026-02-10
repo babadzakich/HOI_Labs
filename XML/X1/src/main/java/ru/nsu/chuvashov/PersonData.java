@@ -33,6 +33,9 @@ public class PersonData {
     @XmlElement
     public String spouse;
     
+    @XmlTransient
+    public Boolean isSpouseWife;
+    
     @XmlElement
     public String mother;
     

@@ -1,0 +1,250 @@
+openapi: 3.1.0
+info:
+  title: DoooDoooRU
+  description: |-
+    Это сервис для просмотра существования различных авиаперелетов, аэропортов, городов где происходят авиаперелеты. 
+  contact:
+    email: a.chuvashov@g.nsu.ru
+  license:
+    name: GNU General Public License v3.0
+    url: https://www.gnu.org/licenses/gpl-3.0.html
+  version: 1.0.0
+tags:
+  - name: locations
+    description: Список локаций 
+  - name: schedule
+    description: Посмотреть расписание
+  - name: booking
+    description: Бронирование рейса
+  - name: check-in
+    description: Онлайн регистрация
+paths:
+  /locations/cities:
+    get:
+      tags:
+        - locations
+      summary: Список всех доступных городов
+      responses:
+        '200':
+          description: Массив названий городов или объектов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
+  /locations/airports:
+    get:
+      tags:
+        - locations
+      summary: Список всех доступных аэропортов
+      responses:
+        '200':
+          description: Массив объектов аэропортов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Airport'
+
+  /locations/cities/{city_id}/airports:
+    get:
+      tags:
+        - locations
+      summary: Список аэропортов в конкретном городе
+      parameters:
+        - name: city_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Список аэропортов города
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Airport'
+
+  /airports/{code}/schedule/inbound:
+    get:
+      tags:
+        - schedule
+      summary: Входящее расписание для аэропорта
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+          description: IATA код аэропорта
+      responses:
+        '200':
+          description: Список прилетающих рейсов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InboundFlight'
+
+  /airports/{code}/schedule/outbound:
+    get:
+      tags:
+        - schedule
+      summary: Исходящее расписание для аэропорта
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Список вылетающих рейсов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OutboundFlight'
+
+
+  # --- Поиск рейсов ---
+  /flights/search:
+    get:
+      tags:
+        - search
+      summary: Поиск маршрутов между двумя точками
+      parameters:
+        - name: origin
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Код аэропорта или название города отправления
+        - name: destination
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Код аэропорта или название города прибытия
+        - name: departure_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: "Дата вылета (ГГГГ-ММ-ДД). Поиск между 00:00:00 текущего и следующего дня."
+        - name: booking_class
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/BookingClass'
+        - name: max_connections
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+          description: Макс. количество пересадок (0 - прямой). Если не указано — не ограничено.
+      responses:
+        '200':
+          description: Список доступных вариантов перелета
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RouteOption'
+
+  # --- Бронирование и регистрация ---
+  /bookings:
+    post:
+      tags:
+        - booking
+      summary: Создание бронирования для одного пассажира
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingRequest'
+      responses:
+        '201':
+          description: Бронирование успешно создано
+
+  /bookings/{booking_id}/check-in:
+    patch:
+      tags:
+        - check-in
+      summary: Онлайн-регистрация на рейс
+      parameters:
+        - name: booking_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Регистрация успешно завершена
+
+components:
+  schemas:
+    Airport:
+      type: object
+      properties:
+        code: { type: string, examples: ["SVO"] }
+        name: { type: string, examples: ["Sheremetyevo International"] }
+        city: { type: string, examples: ["Moscow"] }
+
+    BookingClass:
+      type: string
+      enum: [Economy, Comfort, Business]
+
+    InboundFlight:
+      type: object
+      properties:
+        daysOfWeek: { type: array, items: { type: integer, examples: [1] } }
+        arrivalTime: { type: string, examples: ["14:30"] }
+        flightNo: { type: string, examples: ["SU123"] }
+        origin: { type: string, examples: ["London"] }
+
+    OutboundFlight:
+      type: object
+      properties:
+        daysOfWeek: { type: array, items: { type: integer, examples: [3] } }
+        departureTime: { type: string, examples: ["09:15"] }
+        flightNo: { type: string, examples: ["BA456"] }
+        destination: { type: string, examples: ["Paris"] }
+
+    RouteOption:
+      type: object
+      properties:
+        totalDuration: { type: string, examples: ["5h 30m"] }
+        connections: { type: integer, examples: [1] }
+        flights:
+          type: array
+          items:
+            type: object
+            properties:
+              flightNo: { type: string }
+              departure: { type: string, format: date-time }
+              arrival: { type: string, format: date-time }
+
+    BookingRequest:
+      type: object
+      required: [flight_id, passenger, booking_class]
+      properties:
+        flight_id: { type: string }
+        booking_class: { $ref: '#/components/schemas/BookingClass' }
+        passenger:
+          type: object
+          properties:
+            firstName: { type: string }
+            lastName: { type: string }
+            passportNo: { type: string }

@@ -46,11 +46,15 @@ public class ModelConverter {
             // Set spouse
             if (data.spouse != null && finalPersonMap.containsKey(data.spouse)) {
                 FinalPerson spouse = finalPersonMap.get(data.spouse);
-                if (spouse.gender != null) {
-                    if (spouse.gender.name().equalsIgnoreCase("MALE")) {
-                        person.husband = spouse;
-                    } else {
+                // Определяем тип связи на основе пола текущего человека и супруга
+                if (person.gender != null && spouse.gender != null) {
+                    // Если я мужчина, то супруг(а) - это моя жена (должна быть женщиной)
+                    if (person.gender.name().equalsIgnoreCase("MALE")) {
                         person.wife = spouse;
+                    } 
+                    // Если я женщина, то супруг(а) - это мой муж (должен быть мужчиной)
+                    else {
+                        person.husband = spouse;
                     }
                 }
             }
