@@ -1,15 +1,21 @@
-Table Person {
-  id integer [primary key]
-  first_name varchar
-  last_name varchar
-  gender boolean
-  
-  spouse_id integer [unique, ref: - Person.id]
-  father_id integer [ref: > Person.id]
-  mother_id integer [ref: > Person.id]
+Table Male {
+  id integer [primary key, ref: - Person.id]
 }
 
-Table Siblings {
-  person_id integer [ref: > Person.id]
-  sibling_id integer [ref: > Person.id]
+Table Female {
+  id integer [primary key, ref: - Person.id]
 }
+
+Table Person {
+  id integer [primary key] 
+  first_name varchar
+  last_name varchar
+  mother_id integer [ref: - Female.id]
+  father_id integer [ref: - Male.id]
+}
+
+Table Marriage {
+  husband_id integer [unique, ref: - Male.id]
+  wife_id integer [unique, ref: - Female.id]
+}
+

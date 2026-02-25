@@ -6,9 +6,6 @@ import ru.nsu.chuvashov.Gender;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * JAXB model for structured person data with ID/IDREF references
- */
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlType(propOrder = {"firstName", "familyName", "gender", "mother", "father", "husband", "wife", "brothers", "sisters", "sons", "daughters"})
 public class FinalPerson {
